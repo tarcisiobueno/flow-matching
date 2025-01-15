@@ -1,1 +1,7 @@
 numpy
+torchdiffeq
+matplotlib
+tqdm
+scikit-learn
+torchdiffeq
+torchdyn
