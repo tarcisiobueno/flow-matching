@@ -1,104 +1,111 @@
 
 from matplotlib import pyplot as plt
 import torch
+from torch import nn
 import numpy as np
 from torchdiffeq import odeint
+from models.models import ModelWrapper
 
 
+class Sampler2D:
+    def __init__(self, model: nn.Module, x_0, time_steps=10, method="dopri5"):
+        """
+        Initializes the Sampler2D class and computes the solution.
 
-def sample_flow_trough_time_2d_old(flow, n_samples=256, n_steps=10, solver='dopri5'):
-    
-    # write version with dopri5
-    
-    
-    
-    # default solver
-    # Generate initial samples
-    x = torch.randn(n_samples, 2)
-    
-    # Create subplots
-    fig, axes = plt.subplots(1, n_steps + 1, figsize=(30, 4), sharex=True, sharey=True)
-    time_steps = torch.linspace(0, 1.0, n_steps + 1)
-    
-    # Plot initial samples
-    axes[0].scatter(x.detach()[:, 0], x.detach()[:, 1], s=10)
-    axes[0].set_title(f't={time_steps[0]:.2f}')
-    axes[0].set_xlim(-3.0, 3.0)
-    axes[0].set_ylim(-3.0, 3.0)
-    
-    # Perform steps and plot samples at each step
-    for i in range(n_steps):
-        x = flow.step(x, time_steps[i], time_steps[i + 1])
-        axes[i + 1].scatter(x.detach()[:, 0], x.detach()[:, 1], s=10)
-        axes[i + 1].set_title(f't={time_steps[i + 1]:.2f}')
-    
-    plt.tight_layout()
-    plt.show()
+        Parameters:
+        - model (nn.Module): The model representing the dynamics.
+        - x_0 (torch.Tensor): Initial state, shape [samples, dimensions].
+        - time_steps (int): Number of time steps to solve for.
+        - method (str): ODE solver method (default is 'dopri5').
+        """
+        self.model = ModelWrapper(model) 
+        self.x_0 = x_0
+        self.time_steps = time_steps
+        self.method = method
 
+        # Compute the solution during initialization
+        self.solution = self.compute_solution(self.time_steps)
 
-# Wrapper class for the ODE function
-class ODEFunc(torch.nn.Module):
-    def __init__(self, flow):
-        super().__init__()
-        self.flow = flow
+    def compute_solution(self, time_steps = 2000):
+        """
+        Computes the solution of the dynamics using the given model.
+        """
+        t = torch.linspace(0, 1, time_steps)
         
-    def forward(self, t, x):
-        # Reshape t for the flow model
-        t = torch.ones(x.shape[0]) * t
-        return self.flow(x, t)
+        # Wrap the model to match the signature required by odeint
+        
+        return odeint(self.model, self.x_0, t, method=self.method)
 
-def sample_flow_trough_time_2d(flow, n_samples=256, n_steps=10, solver='dopri5'):
-    
-    x = torch.randn(n_samples, 2)
-    time_steps = torch.linspace(0, 1.0, n_steps + 1)
-    
-    if solver == 'dopri5':        
-        # Create ODE function
-        ode_func = ODEFunc(flow)
-        
-        # Solve ODE using dopri5
-        with torch.no_grad():
-            trajectory = odeint(
-                ode_func,
-                x,
-                time_steps,
-                method='dopri5',
-                rtol=1e-3,
-                atol=1e-3
-            )
-        
+    def plot_sample(self, title="Sample from target distribution", figsize=(8, 6), point_size=15, alpha=0.7, color='blue'):
+        """
+        Plots a 2D scatter plot for the final time step of the solution.
+
+        Parameters:
+        - title (str): Title of the plot.
+        - figsize (tuple): Size of the figure (width, height).
+        - point_size (float): Size of the scatter points.
+        - alpha (float): Transparency of the scatter points.
+        - color (str or list): Color of the scatter points.
+        """
+        # Extract the last time step and dimensions
+        x = self.solution[-1, :, 0].detach().numpy()
+        y = self.solution[-1, :, 1].detach().numpy()
+
+        # Create the plot
+        plt.figure(figsize=figsize)
+        plt.scatter(x, y, s=point_size, alpha=alpha, color=color)
+        plt.xlabel('X-axis')
+        plt.ylabel('Y-axis')
+        plt.title(title)
+        plt.grid(True, linestyle='--', alpha=0.6)
+        plt.gca().set_aspect('equal', adjustable='box')  # Ensure equal aspect ratio for axes
+        plt.tight_layout()
+        plt.show()
+
+    def plot_flow(self, figsize=(16, 8), point_size=10, alpha=0.7, cmap='viridis'):
+        """
+        Plots a series of subplots showing the distribution of samples at each time step.
+
+        Parameters:
+        - figsize (tuple): Size of the overall figure (width, height).
+        - point_size (float): Size of the scatter points.
+        - alpha (float): Transparency of the scatter points.
+        - cmap (str): Colormap for the scatter points.
+        """
+        # Extract all time steps and dimensions
+        x_values = self.solution[:, :, 0].detach().numpy()
+        y_values = self.solution[:, :, 1].detach().numpy()
+        time_steps = len(self.solution)
+
         # Create subplots
-        fig, axes = plt.subplots(1, n_steps + 1, figsize=(30, 4), sharex=True, sharey=True)
-        
-        # Plot samples at each time step
-        for i in range(n_steps + 1):
-            axes[i].scatter(
-                trajectory[i].detach()[:, 0],
-                trajectory[i].detach()[:, 1],
-                s=10
+        fig, axes = plt.subplots(1, time_steps, figsize=figsize, sharex=True, sharey=True)
+
+        for i in range(time_steps):
+            ax = axes[i]
+            sc = ax.scatter(
+                x_values[i], 
+                y_values[i],
+                s=point_size,
+                alpha=alpha,
+                c=[i / (time_steps - 1)] * len(x_values[i]),
+                cmap=cmap
             )
-            axes[i].set_title(f't={time_steps[i]:.2f}')
-            axes[i].set_xlim(-3.0, 3.0)
-            axes[i].set_ylim(-3.0, 3.0)
-            
-    else:
-        # Default solver using step function
-        # Create subplots
-        fig, axes = plt.subplots(1, n_steps + 1, figsize=(30, 4), sharex=True, sharey=True)
+            ax.set_title(f"t = {i / (time_steps - 1):.2f}")
+            ax.grid(True, linestyle='--', alpha=0.6)
+            ax.set_aspect('equal', adjustable='box')    
         
-        # Plot initial samples
-        axes[0].scatter(x.detach()[:, 0], x.detach()[:, 1], s=10)
-        axes[0].set_title(f't={time_steps[0]:.2f}')
-        axes[0].set_xlim(-3.0, 3.0)
-        axes[0].set_ylim(-3.0, 3.0)
+        plt.tight_layout()
+        plt.show()
         
-        # Perform steps and plot samples at each step
-        for i in range(n_steps):
-            x = flow.step(x, time_steps[i], time_steps[i + 1])
-            axes[i + 1].scatter(x.detach()[:, 0], x.detach()[:, 1], s=10)
-            axes[i + 1].set_title(f't={time_steps[i + 1]:.2f}')
-    
-    plt.tight_layout()
-    plt.show()
-
-
+    def plot_trajectories(self, n=2000):
+        """Plot trajectories of some selected samples."""
+        solution_traj = self.compute_solution(time_steps=2000)
+        solution_traj_np = solution_traj.detach().numpy()
+        plt.figure(figsize=(6, 6))
+        plt.scatter(solution_traj_np[0, :n, 0], solution_traj_np[0, :n, 1], s=4, alpha=0.8, c="black")
+        plt.scatter(solution_traj_np[:, :n, 0], solution_traj_np[:, :n, 1], s=0.05, alpha=0.05, c="whitesmoke")
+        plt.scatter(solution_traj_np[-1, :, 0], solution_traj_np[-1, :, 1], s=10, alpha=1, c="navy")
+        plt.legend(["x0 ~ p", "Flow", "x1 ~ q"])
+        plt.xticks([])
+        plt.yticks([])
+        plt.show()

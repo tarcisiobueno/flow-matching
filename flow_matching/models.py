@@ -14,8 +14,8 @@ class SimplestFM:
 class OTFM:   
 
     def compute_x_t(self, x_0:Tensor, x_1:Tensor, sigma_min, t) -> Tensor:
-        return (1-(1-sigma_min)*t)*x_0+t*x_1
+        return (1-(1-sigma_min)*t)*x_0 + t*x_1
     
     def compute_dx_t(self, x_0, x_1, sigma_min) -> Tensor:
-        return x_1 - (1-sigma_min)*x_0
+        return x_1 - (1 - sigma_min)*x_0
     
