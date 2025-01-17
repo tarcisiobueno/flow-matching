@@ -8,18 +8,20 @@ from models.models import ModelWrapper
 
 
 class Sampler2D:
-    def __init__(self, model: nn.Module, x_0, time_steps=10, method="dopri5"):
+    def __init__(self, model: nn.Module, x_0, time_steps=10, method="dopri5", device=None):
         """
         Initializes the Sampler2D class and computes the solution.
 
         Parameters:
         - model (nn.Module): The model representing the dynamics.
         - x_0 (torch.Tensor): Initial state, shape [samples, dimensions].
+        - device (torch.device or str): The device to run the model and computations on (default is None, which uses the CPU).
         - time_steps (int): Number of time steps to solve for.
         - method (str): ODE solver method (default is 'dopri5').
         """
-        self.model = ModelWrapper(model) 
-        self.x_0 = x_0
+        self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = ModelWrapper(model).to(self.device) 
+        self.x_0 = x_0.to(self.device)
         self.time_steps = time_steps
         self.method = method
 
@@ -30,7 +32,7 @@ class Sampler2D:
         """
         Computes the solution of the dynamics using the given model.
         """
-        t = torch.linspace(0, 1, time_steps)
+        t = torch.linspace(0, 1, time_steps, device=self.device)
         
         # Wrap the model to match the signature required by odeint
         
@@ -48,8 +50,8 @@ class Sampler2D:
         - color (str or list): Color of the scatter points.
         """
         # Extract the last time step and dimensions
-        x = self.solution[-1, :, 0].detach().numpy()
-        y = self.solution[-1, :, 1].detach().numpy()
+        x = self.solution[-1, :, 0].detach().cpu().numpy()
+        y = self.solution[-1, :, 1].detach().cpu().numpy()
 
         # Create the plot
         plt.figure(figsize=figsize)
@@ -73,8 +75,8 @@ class Sampler2D:
         - cmap (str): Colormap for the scatter points.
         """
         # Extract all time steps and dimensions
-        x_values = self.solution[:, :, 0].detach().numpy()
-        y_values = self.solution[:, :, 1].detach().numpy()
+        x_values = self.solution[:, :, 0].detach().cpu().numpy()
+        y_values = self.solution[:, :, 1].detach().cpu().numpy()
         time_steps = len(self.solution)
 
         # Create subplots
@@ -100,7 +102,7 @@ class Sampler2D:
     def plot_trajectories(self, n=2000):
         """Plot trajectories of some selected samples."""
         solution_traj = self.compute_solution(time_steps=2000)
-        solution_traj_np = solution_traj.detach().numpy()
+        solution_traj_np = solution_traj.detach().cpu().numpy()
         plt.figure(figsize=(6, 6))
         plt.scatter(solution_traj_np[0, :n, 0], solution_traj_np[0, :n, 1], s=4, alpha=0.8, c="black")
         plt.scatter(solution_traj_np[:, :n, 0], solution_traj_np[:, :n, 1], s=0.05, alpha=0.05, c="whitesmoke")
