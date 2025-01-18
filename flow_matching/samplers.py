@@ -1,14 +1,11 @@
-
+from torchdiffeq import odeint
 from matplotlib import pyplot as plt
 import torch
 from torch import nn
-import numpy as np
-from torchdiffeq import odeint
 from models.models import ModelWrapper
 
-
 class Sampler2D:
-    def __init__(self, model: nn.Module, x_0, time_steps=10, method="dopri5", device=None):
+    def __init__(self, model: nn.Module, x_0, time_steps=10, fm_method="default",ode_method="dopri5", device=None):
         """
         Initializes the Sampler2D class and computes the solution.
 
@@ -17,13 +14,14 @@ class Sampler2D:
         - x_0 (torch.Tensor): Initial state, shape [samples, dimensions].
         - device (torch.device or str): The device to run the model and computations on (default is None, which uses the CPU).
         - time_steps (int): Number of time steps to solve for.
-        - method (str): ODE solver method (default is 'dopri5').
+        - ode_method (str): ODE solver ode_method (default is 'dopri5').
         """
         self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = ModelWrapper(model).to(self.device) 
         self.x_0 = x_0.to(self.device)
         self.time_steps = time_steps
-        self.method = method
+        self.ode_method = ode_method
+        self.fm_method = fm_method
 
         # Compute the solution during initialization
         self.solution = self.compute_solution(self.time_steps)
@@ -32,11 +30,12 @@ class Sampler2D:
         """
         Computes the solution of the dynamics using the given model.
         """
-        t = torch.linspace(0, 1, time_steps, device=self.device)
+        if self.fm_method == "diffusion":
+            t = torch.linspace(0, 1-1e-5, time_steps, device=self.device)
+        else:
+            t = torch.linspace(0, 1-1e-5, time_steps, device=self.device)
         
-        # Wrap the model to match the signature required by odeint
-        
-        return odeint(self.model, self.x_0, t, method=self.method)
+        return odeint(self.model, self.x_0, t, method=self.ode_method)
 
     def plot_sample(self, title="Sample from target distribution", figsize=(8, 6), point_size=15, alpha=0.7, color='blue'):
         """
