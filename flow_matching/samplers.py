@@ -5,7 +5,6 @@ import torch
 from torch import nn
 from models.models import ModelWrapper
 from matplotlib.lines import Line2D
-
 from torchdiffeq import odeint_event
 
 class Sampler2D:
@@ -311,3 +310,47 @@ class Sampler2D:
         
         plt.tight_layout()
         plt.show()
+        
+
+def visualize_mnist_flow(model, n_samples=10, n_steps=8, device='cuda'):
+    """
+    Visualize the flow from noise to MNIST-like images.
+
+    Args:
+        model: The trained UNet model
+        n_samples: Number of images to generate
+        n_steps: Number of intermediate steps to show
+        device: Device to run the model on
+    """
+
+    model.eval()
+
+    # Generate initial random noise
+    x = torch.randn(n_samples, 1, 28, 28).to(device)
+
+    # Create subplots
+    fig, axes = plt.subplots(n_samples, n_steps + 1, figsize=(2*(n_steps + 1), 2*n_samples))
+    time_steps = torch.linspace(0, 1.0, n_steps + 1)
+
+    # Plot initial noise samples
+    for j in range(n_samples):
+        axes[j, 0].imshow(x[j, 0].cpu().detach(), cmap='gray')
+        axes[j, 0].axis('off')
+    axes[0, 0].set_title(f't={time_steps[0]:.2f}')
+
+    # Perform steps and plot samples at each step
+    with torch.no_grad():
+        for i in range(n_steps):
+            t_start = torch.tensor([time_steps[i]], device=device).view(1, 1, 1, 1).expand(n_samples, -1, -1, -1)
+            t_end = torch.tensor([time_steps[i + 1]], device=device).view(1, 1, 1, 1).expand(n_samples, -1, -1, -1)
+
+            x = model.step(x, t_start, t_end)
+
+            # Plot each sample
+            for j in range(n_samples):
+                axes[j, i + 1].imshow(x[j, 0].cpu().detach(), cmap='gray')
+                axes[j, i + 1].axis('off')
+            axes[0, i + 1].set_title(f't={time_steps[i + 1]:.2f}')
+
+    plt.tight_layout()
+    plt.show()
