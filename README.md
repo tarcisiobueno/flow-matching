@@ -1,1 +1,1 @@
-Flow Matching for generative models implementation
+This repository contains an implementation of Flow Matching for Generative Modeling.
