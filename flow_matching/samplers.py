@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 import torch
 from torch import nn
 from models.models import ModelWrapper
+from matplotlib.lines import Line2D
 
 from torchdiffeq import odeint_event
 
@@ -58,7 +59,7 @@ class Sampler2D:
             solution = odeint(self.model, self.x_0, t, method=self.ode_method, rtol=1e-5,  atol=1e-5)
         return solution
 
-    def plot_sample(self, title="Sample from target distribution", figsize=(8, 6), point_size=15, alpha=0.7, color='blue'):
+    def plot_sample(self, title="Sample from target distribution", figsize=(8, 6), point_size=15, alpha=0.7, color='#470756'):
         """
         Plots a 2D scatter plot for the final time step of the solution.
 
@@ -84,18 +85,23 @@ class Sampler2D:
         plt.tight_layout()
         plt.show()
 
-        
-    def plot_trajectories(self, n=2000):
+
+    def plot_trajectories(self, n=2000, title=""):
         """Plot trajectories of some selected samples."""
-        solution_traj = self.compute_solution(time_steps=2000)
+        solution_traj = self.compute_solution(time_steps=5000)
         solution_traj_np = solution_traj.detach().cpu().numpy()
         plt.figure(figsize=(6, 6))
         plt.scatter(solution_traj_np[0, :n, 0], solution_traj_np[0, :n, 1], s=4, alpha=0.8, c="black")
         plt.plot(solution_traj_np[:, :n, 0], solution_traj_np[:, :n, 1], linestyle="--", color="black", alpha=1, linewidth=0.3)
         plt.scatter(solution_traj_np[-1, :, 0], solution_traj_np[-1, :, 1], s=10, alpha=1, c="navy")
-        plt.legend(["x0 ~ p", "Path", "x1 ~ q"])
-        plt.xticks([])
-        plt.yticks([])
+        legend_handles = [
+            Line2D([0], [0], marker='o', color='w', markerfacecolor='black', markersize=10, label='x_0 ~ p'),
+            Line2D([0], [0], color='black', linestyle="--", linewidth=0.3, label='Path'),
+            Line2D([0], [0], marker='o', color='w', markerfacecolor='navy', markersize=10, label='x_1 ~ q')
+        ]
+        plt.title(title)
+        plt.legend(handles=legend_handles)
+        plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
         plt.show()
         
 
@@ -133,7 +139,7 @@ class Sampler2D:
         """
         def event_fn(t, y):
             # Stop when time reaches the target
-            return torch.tensor([t==time_target], device=self.device)
+            return torch.tensor([time_target-t], device=self.device)
         
         t = torch.Tensor(1).to(self.device)
         # Solve ODE with event detection
@@ -152,7 +158,7 @@ class Sampler2D:
 
         return solution
     
-    def plot_flow_nfe_targets(self, nfe_targets, figsize=(16, 8), point_size=10, alpha=0.7, cmap='viridis'):
+    def plot_flow_nfe_targets(self, nfe_targets, figsize=(16, 8), point_size=10, alpha=0.7, cmap='viridis', title="", title_y=0.75):
         """
         Plots a series of subplots showing the distribution of samples at each NFE target.
 
@@ -181,7 +187,7 @@ class Sampler2D:
 
         # Create subplots
         fig, axes = plt.subplots(1, n_nfe_targets, figsize=figsize, sharex=True, sharey=True)
-
+        fig.suptitle(title, y=title_y, fontsize=16)
         # If there is only one subplot, axes will be a single Axes object
         if n_nfe_targets == 1:
             axes = [axes]
@@ -196,14 +202,14 @@ class Sampler2D:
                 c=[i / (n_nfe_targets - (1-1e-5))] * len(x_values[i]),
                 cmap=cmap
             )
-            ax.set_title(f"t = {times_array[i]:.2f} NFE = {nfe_targets[i]}")
+            ax.set_title(f"NFE = {nfe_targets[i]}")
             ax.grid(True, linestyle='--', alpha=0.6)
             ax.set_aspect('equal', adjustable='box')    
 
         plt.tight_layout()
         plt.show()
 
-    def plot_flow_time_targets(self, time_targets, figsize=(16, 8), point_size=10, alpha=0.7, cmap='viridis'):
+    def plot_flow_time_targets(self, time_targets, figsize=(16, 8), point_size=10, alpha=0.7, cmap='viridis', title="", title_y=0.75):
         """
         Plots a series of subplots showing the distribution of samples at each NFE target.
 
@@ -226,14 +232,12 @@ class Sampler2D:
         solutions_array = torch.stack(solutions).detach().cpu().numpy()
         times_array = torch.stack(times).detach().cpu().numpy()
 
-        print(times_array)
-
         x_values = solutions_array[:, :, 0]
         y_values = solutions_array[:, :, 1]
 
         # Create subplots
         fig, axes = plt.subplots(1, n_time_targets, figsize=figsize, sharex=True, sharey=True)
-
+        fig.suptitle(title, y=title_y, fontsize=16)
         # If there is only one subplot, axes will be a single Axes object
         if n_time_targets == 1:
             axes = [axes]
@@ -248,14 +252,14 @@ class Sampler2D:
                 c=[i / (n_time_targets - (1-1e-5))] * len(x_values[i]),
                 cmap=cmap
             )
-            ax.set_title(f"t = {times_array[i]:.2f} NFE = {time_targets[i]}")
+            ax.set_title(f"t = {times_array[i]:.2f}")
             ax.grid(True, linestyle='--', alpha=0.6)
             ax.set_aspect('equal', adjustable='box')    
 
         plt.tight_layout()
         plt.show()
     
-    def plot_flow(self, time_steps, plot_nfe=True, figsize=(16, 8), point_size=10, alpha=0.7, cmap='viridis'):
+    def plot_flow(self, time_steps, plot_nfe=True, figsize=(16, 8), point_size=10, alpha=0.7, cmap='viridis', title=""):
         """
         Plots a series of subplots showing the distribution of samples at each time step.
 
@@ -286,6 +290,7 @@ class Sampler2D:
 
         # Create subplots
         fig, axes = plt.subplots(1, time_steps, figsize=figsize, sharex=True, sharey=True)
+        fig.suptitle(title, y=0.7, fontsize=16)
 
         for i in range(time_steps):
             ax = axes[i]
@@ -298,9 +303,9 @@ class Sampler2D:
                 cmap=cmap
             )
             if plot_nfe:
-                ax.set_title(f"t = {(nfe_times[i+1]):.1f} - NFE: {nfe_results_array[i]}")
+                ax.set_title(f"t = {(nfe_times[i+1]):.2f} - NFE: {nfe_results_array[i]}")
             else:
-                ax.set_title(f"t = {(nfe_times[i+1]):.1f}")
+                ax.set_title(f"t = {(nfe_times[i+1]):.2f}")
             ax.grid(True, linestyle='--', alpha=0.6)
             ax.set_aspect('equal', adjustable='box')    
         

@@ -12,7 +12,7 @@ class SimplestFM:
     
 class DiffusionFM:
     
-    def __init__(self, beta_min=0.1, beta_max=5):
+    def __init__(self, beta_min=0.1, beta_max=20):
         self.beta_min = beta_min
         self.beta_max = beta_max
         self.eps = 1e-5
