@@ -1,4 +1,2 @@
-*.pdf
-*.png
-data*
+data*/
 env
