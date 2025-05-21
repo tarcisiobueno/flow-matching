@@ -52,7 +52,7 @@ $$
 We then obtain the Conditional Flow Matching Loss (CFM).
 
 $$
-\mathcal{L}_{\text{CFM}}(\theta) = \mathbb{E}_{t, X_t, X_1} \| u^\theta_t(X_t) - u_t(X_t | X_1) \|^2
+\mathcal{L}_{\text{CFM}}(\theta) = \mathbb{E}_{t, X_t, X_1} \[ u^\theta_t(X_t) - u_t(X_t | X_1) \]^2
 $$
 
 $\text{where} \quad t \sim U[0,1], \quad X_0 \sim p, \quad X_1 \sim q$.
@@ -62,5 +62,5 @@ One important contribution given by the article was to show that FML and CFM pro
 Solving $\frac{d}{dt}X_{t|1} = u_t(X_{t|1}|X_1)$ and pluging the result into CFM, we have:
 
 $$
-\mathcal{L}^{\text{OT,Gauss}}_{\text{CFM}}(\theta) = \mathbb{E}_{t, X_0, X_1} \| u^\theta_t(X_t) - (X_1-X_0) \|^2
+\mathcal{L}^{\text{OT,Gauss}}_{\text{CFM}}\(\theta \) = \mathbb{E}_{t, X_0, X_1} \[ u^\theta_t(X_t) - (X_1-X_0) \]^2
 $$
