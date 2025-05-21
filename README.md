@@ -38,7 +38,7 @@ $$
 To do this we could regress the neural network velocity field $u^\theta_t$ to a known target velocity field $u_t$. For this, we would use the Flow Matching Loss (FML):
 
 $$
-L_{FM}=E_{t, X_t}||u^\theta_t(X_t)-u_t(X_t)||^2
+L_{FM} = E_{t, X_t} u^\theta_t(X_t)-u_t(X_t)^2
 $$
 
 where $t \sim U[0, 1]$ and $X_t \sim p_t$.
